@@ -1,2 +1,2 @@
-stock-analyzer
+stock-analizer
 ==============
