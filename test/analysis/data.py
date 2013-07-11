@@ -13,6 +13,7 @@ class Data(object):
     '''
     classdocs
     '''
+    data_day = 3
     def __init__(self):
         '''
         Constructor
@@ -29,15 +30,25 @@ class Data(object):
             cur.update({'day_transaction':sum([cur[u'morning_transaction'],cur[u'afternoon_transaction']])})
             sorted(cur)
             data.append(cur)
+        codes=list(set( [r[u"code"]for r in data]))
+        average_transactions={}
+        for code in codes:
+            tmp_transaction = {}
+            day = [r[u"day_transaction"] for r in data if r[u"code"] == code]
+            tmp_transaction.update({u"day_transaction":sum(day)/len(day)})
+            morning = [r[u"morning_transaction"] for r in data if r[u"code"] == code]
+            tmp_transaction.update({u"morning_transaction":sum(morning)/len(morning)})
+            afternoon = [r[u"afternoon_transaction"] for r in data if r[u"code"] == code]
+            tmp_transaction.update({u"afternoon_transaction":sum(afternoon)/len(afternoon)})
+            average_transactions.update({code:tmp_transaction})
+        print average_transactions
         tmp_data = []
-        i=1
+        i = 0
         while i < len(data) -3 :
             if data[i][u"code"] == data[i+3][u"code"]: 
                 tmp_r = {}
-                tmp_r.update({u"0_"+key:data[i][key] for key in data[i].keys()})
-                tmp_r.update({u"1_"+key:data[i+1][key] for key in data[i+1].keys()})
-                tmp_r.update({u"2_"+key:data[i+2][key] for key in data[i+2].keys()})
-                tmp_r.update({u"3_"+key:data[i+3][key] for key in data[i+3].keys()})
+                for j in range(0,self.data_day):
+                    tmp_r.update({str(self.data_day)+u"_("+key+u")":data[i+j][key] for key in data[i+j].keys()})
                 tmp_data.append(tmp_r)
             i=i+1
         print len(tmp_data)
