@@ -5,9 +5,12 @@ Created on Jul 9, 2013
 @author: soultoru
 '''
 from test.db.mongo import Database
-from datetime import datetime,timedelta
+# from datetime import datetime,timedelta
 from pymongo import ASCENDING,DESCENDING
 import re
+from pandas import DataFrame,ols
+import statsmodels.api as sm
+#import matplotlib.pyplot as plt
 
 class Data(object):
     '''
@@ -55,6 +58,10 @@ class Data(object):
                          "afternoon_transaction/afternoon_transaction",
                          "day_transaction/day_transaction"
                          ]
+    target_list = [u'0_(morning_high_price/morning_open_price)',
+                        u'0_(morning_close_price/morning_open_price)',
+                        u'0_(afternoon_high_price/afternoon_open_price)',
+                        u'0_(afternoon_close_price/afternoon_open_price)']
     def __init__(self):
         '''
         Constructor
@@ -66,7 +73,7 @@ class Data(object):
             del cur[u"_id"]
             #一日分のトランザクションを算出"
             cur.update({'day_low_price':min([cur[u'morning_low_price'],cur[u'afternoon_low_price']])})
-            cur.update({'day_high_price':min([cur[u'morning_high_price'],cur[u'afternoon_high_price']])})
+            cur.update({'day_high_price':max([cur[u'morning_high_price'],cur[u'afternoon_high_price']])})
             cur.update({'day_transaction':sum([cur[u'morning_transaction'],cur[u'afternoon_transaction']])})
             sorted(cur)
             data.append(cur)
@@ -130,7 +137,8 @@ class Data(object):
                         tmp3 = None
                     r.update({str1 + "/" + str2:tmp3})
         #code,dateと比率になっていないものはすべて削除
-        return [ { s:r[s] for s in r.keys() if s==u"date" or s==u"code" or re.match(r'.*/.*',s)} for r in composition_data]
+        #return [ { s:r[s] for s in r.keys() if s==u"date" or s==u"code" or re.match(r'.*/.*',s)} for r in composition_data]
+        return [ { s:r[s] for s in r.keys() if re.match(r'.*/.*',s)} for r in composition_data]
     def convertToListFromDictionary(self,data):
         data
         pass
@@ -140,5 +148,28 @@ if __name__ == "__main__" :
     conn = db.getConnectionNoAuth(u"127.0.0.1")
     coll = db.getCollection(conn, u"slice", u"prices")
     array = Data().getData(coll)
-    print array[0][u"code"]
     conn.close()
+    df=DataFrame(array)
+    df = df.dropna(axis=0)
+    
+    Y = [df[target] for target in Data.target_list]
+    
+    #ax = plt.subplot(111)
+    #for target in Data.target_list:
+    #    ax.hist(df[target], bins=30, histtype='step', label=target)
+    #plt.show()
+    
+    
+    for key in [key for key in array[0].keys() if re.match(r'^0_.*',key)]:
+        
+        try:
+            del df[key]
+        except:
+            pass
+    glm_gamma = sm.GLM(Y[0], df,family=sm.families.InverseGaussian())
+    glm_result = glm_gamma.fit()
+#    ols_result = ols(y=Y[1],x=df)
+    
+    print glm_result.summary()
+    
+    
